@@ -333,14 +333,12 @@ sub extract_idata {
     # Where the XSL files are
     my $resource = join("/", dirname($INC{"CIHM/METS/parse.pm"}), "resource");
 
-    print STDERR "resource: $resource\n";
-
     my $stylesheet = XML::LibXSLT->new->parse_stylesheet(XML::LibXML->new->parse_file(join("/", $resource, "xsl", "tdr.xsl")));
 
     # Parameters to pass to the stylesheet
     my %params = (
         contributor => $self->depositor,
-        filepath => $self->aipfile('FLocat','URN',''),
+        filepath => "/".$self->aipfile('FLocat','URN','')."/",
         );
 
     my $doc = $stylesheet->transform($self->xml, XML::LibXSLT::xpath_to_string(%params));
