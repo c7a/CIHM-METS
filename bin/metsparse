@@ -1,0 +1,55 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+
+use FindBin;
+use lib "$FindBin::RealBin/../";
+use CIHM::METS::parse;
+use File::Slurp;
+use Switch;
+use Data::Dumper;
+
+my ($command,$aip,$metspath) = @ARGV;
+
+my $pathinmets;
+if ($metspath =~ /${aip}(.*)$/) {
+    $pathinmets=$1;
+} else {
+    warn "Can't find $aip within $metspath\n";
+}
+
+my $xmlfile;
+if (-f $metspath) {
+    $xmlfile= read_file($metspath);
+} else {
+    die "$metspath doesn't exist or isn't a file\n";
+}
+
+my $mets = CIHM::METS::parse->new($aip, $pathinmets,$xmlfile);
+
+# At this time there is only one structMap and it must be called "physical"
+$mets->mets_walk_structMap("physical");
+
+
+switch($command) {
+    case "fileinfo"   {
+        print Dumper($command,$mets->fileinfo("physical"));
+    }
+    case "metsdata"   {
+        print Dumper($command,$mets->metsdata("physical"));
+    }
+    case "idata"   {
+        print Dumper($command,$mets->extract_idata());
+    }
+    else {
+        die "Command $command not understood\n";
+    }
+}
+
+
+
+
+
+
+1;
