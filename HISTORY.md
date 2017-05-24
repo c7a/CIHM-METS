@@ -1,8 +1,8 @@
-#History
+# History
 
 This code has a long history behind it that provides context.
 
-##2012 CMR and Solr
+## 2012 CMR and Solr
 
 Starting in 2012, an internal [Canadiana Metadata Repository (CMR) XML format](http://www.canadiana.ca/schema/2012/xsd/cmr/cmr.xsd)  was used as a normalized storage format.  CMR records could be submit to Canadiana to be part of the national index on which the Canadiana Discovery Portal was based.  Software existed which would import CMR data into our Solr search engine, including CIHM::Solr.
 
@@ -12,7 +12,7 @@ While there was some data in MySQL, most data was stored within the Solr core.  
  
  Software existed which would convert our METS referenced data to CMR, including a function CIHM::TDR->build_cmr().
  
-##2016 Metadata Bus
+## 2016 Metadata Bus
 
 In early 2016 we started work on what we call our Metadata Bus.  We wanted to be able to more easily upgrade indivividual components of our platform without impacting others, so adopted a Microservices architecture with CouchDB acting as our communications conduit (our Bus). Microservices would know they had work to do based on CouchDB views, etc.
 
@@ -24,6 +24,6 @@ The data stored in CouchDB would later be combined with other data with a micros
 
 No data was retained from the old Solr core other than which collections each AIP was a member of. Any one-off data that was stored in Solr might still exist in the Discovery Portal demonstration site, but is no longer part of our current platform.
 
-##2017
+## 2017
 
 Moving forward we plan to get rid of the last usage of the CMR format, which is contained within this library. We will refactor to no longer make use of xsl rules for transformation, with all the logic contained in perl.
