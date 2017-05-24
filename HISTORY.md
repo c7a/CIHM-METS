@@ -14,11 +14,11 @@ While there was some data in MySQL, most data was stored within the Solr core.  
  
 ## 2016 Metadata Bus
 
-In early 2016 we started work on what we call our Metadata Bus.  We wanted to be able to more easily upgrade indivividual components of our platform without impacting others, so adopted a Microservices architecture with CouchDB acting as our communications conduit (our Bus). Microservices would know they had work to do based on CouchDB views, etc.
+In early 2016 we started work on what we call our Metadata Bus.  We wanted to be able to more easily upgrade individual components of our platform without impacting others, so adopted a Microservices architecture with CouchDB acting as our communications conduit (our Bus). Microservices would know they had work to do based on CouchDB views, etc.
 
 Solr would be streamed to from CouchDB, where all data could be rebuilt from the data in the AIP.  CouchDB was used as a communications conduit between Microservices (which might run in different servers rooms in different provinces), and Solr would be as an index: neither were being used for long-term storage.
 
-The latest versions of CIHM::Solr and CIHM::TDR->build_cmr() were built into a new microservice we called Hammer which would take data referenced from METS and post to a CouchDB database.  The output of build_cmr() was fed directly into CIHM::Solr, which would then read the Solr formatted XML to create a simple PERL hash (key/value pairs, where some keys would have arrays of data).
+The latest versions of CIHM::Solr and CIHM::TDR->build_cmr() were built into a new microservice we called Hammer which would take data referenced from METS and post to a CouchDB database.  The output of build_cmr() was fed directly into CIHM::Solr, which would then read the Solr formatted XML to create a simple perl hash (key/value pairs, where some keys would have arrays of data).
 
 The data stored in CouchDB would later be combined with other data with a microservice called Press that would output to a cosearch database (which would be distributed via CouchDB to the locations where Solr was running, and then data streamed to Solr) and copresentation database (Used by the front-end interface for presentation).
 
