@@ -46,6 +46,7 @@
         <xsl:apply-templates select="$dmd/marc:datafield[@tag = '510']"/>
         <xsl:apply-templates select="$dmd/marc:datafield[@tag = '515']"/>
         <xsl:apply-templates select="$dmd/marc:datafield[@tag = '520']"/>
+        <xsl:apply-templates select="$dmd/marc:datafield[@tag='533']/marc:subfield[@code='a']"/>
         <xsl:apply-templates select="$dmd/marc:datafield[@tag = '534']"/>
         <xsl:apply-templates select="$dmd/marc:datafield[@tag = '540']"/>
         <xsl:apply-templates select="$dmd/marc:datafield[@tag = '546']"/>
@@ -157,6 +158,10 @@
 
   <xsl:template match="marc:datafield[@tag='520']">
     <cmr:note><xsl:value-of select="normalize-space(.)"/></cmr:note>
+  </xsl:template>
+
+  <xsl:template match="marc:datafield[@tag='533']/marc:subfield[@code='a']">
+    <cmr:note type="source"><xsl:value-of select="normalize-space(.)"/></cmr:note>
   </xsl:template>
 
   <xsl:template match="marc:datafield[@tag='534']">
