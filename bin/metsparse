@@ -34,13 +34,13 @@ $mets->mets_walk_structMap("physical");
 
 switch($command) {
     case "fileinfo"   {
-        print Dumper($command,$mets->fileinfo("physical"));
+        print Data::Dumper->Dump([$mets->fileinfo("physical")],[qw(fileinfo)]);
     }
     case "metsdata"   {
-        print Dumper($command,$mets->metsdata("physical"));
+        print Data::Dumper->Dump([$mets->metsdata("physical")],[qw(metsdata)]);
     }
     case "idata"   {
-        print Dumper($command,$mets->extract_idata());
+        print Data::Dumper->Dump([$mets->extract_idata()],[qw(item_data)]);
     }
     else {
         die "Command $command not understood\n";
