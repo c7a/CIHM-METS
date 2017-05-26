@@ -18,23 +18,29 @@ CIHM::METS::parse - Parse METS records that conform to the Canadiana Application
 
 =head1 VERSION
 
-Version 0.02
+Version 0.03
 
 
 =cut
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 
 =head1 SYNOPSIS
 
-This module parses XML METS records and returns hashes which are stored
-in CouchDB and indexed in Solr.
+This module parses XML METS records and returns hashes which are stored in and
+distributed by CouchDB and indexed by Solr.
 
     use CIHM::METS::parse;
 
-    my $foo = CIHM::METS::parse->new();
-    ...
+    my $foo = CIHM::METS::parse->new($args);
+    where $args is a HASH containing parameters
+       aip - AIP ID (depositor.OBJID)
+       metspath - Path within the AIP to the METS file (IE: /data/sip/data/metadata.xml)
+       xmlfile - String containing the contents of the METS file
+       metsaccess - Object which has a function $metsaccess->get_metadata($file) which is able to return the contents of $file within the AIP.
+
+
 
 We know we have more documentation to do, but want to make this source visible
 sooner.
@@ -54,19 +60,21 @@ automatically be notified of progress on your bug as we make changes.
 =cut
 
 
+
 sub new {
-    my $class = shift;
-    my ($aip,$metspath,$xmlfile) = @_;
+    my($class, $args) = @_;
+    my $self = bless {}, $class;
 
-    my $self = bless {
-        metspath => $metspath,
-        aip => $aip,
-        xml => XML::LibXML->new->parse_string($xmlfile),
-        xpc => XML::LibXML::XPathContext->new,
-        fileinfo => {}
-    }, $class;
+    if (ref($args) ne "HASH") {
+        die "Argument to CIHM::METS::parse->new() not a hash\n";
+    };
+    $self->{args} = $args;
 
-    my ($depositor,$objid)=split(/\./,$aip);
+    $self->{xml}=XML::LibXML->new->parse_string($self->xmlfile);
+    $self->{xpc}=XML::LibXML::XPathContext->new,
+    $self->{fileinfo}={};
+
+    my ($depositor,$objid)=split(/\./,$self->aip);
     $self->{depositor}=$depositor;
     $self->{objid}=$objid;
 
@@ -75,7 +83,26 @@ sub new {
 
     return $self;
 }
-
+sub args {
+    my $self = shift;
+    return $self->{args};
+}
+sub xmlfile {
+    my $self = shift;
+    return $self->args->{xmlfile};
+}
+sub metspath {
+    my $self = shift;
+    return $self->args->{metspath};
+}
+sub aip {
+    my $self = shift;
+    return $self->args->{aip};
+}
+sub metsaccess {
+    my $self = shift;
+    return $self->args->{metsaccess};
+}
 sub xml {
     my $self = shift;
     return $self->{xml};
@@ -88,10 +115,6 @@ sub fileinfo {
     my ($self,$type) = @_;
     return $self->{fileinfo}->{$type};
 }
-sub aip {
-    my $self = shift;
-    return $self->{aip};
-}
 sub depositor {
     my $self = shift;
     return $self->{depositor};
@@ -99,10 +122,6 @@ sub depositor {
 sub objid {
     my $self = shift;
     return $self->{objid};
-}
-sub metspath {
-    my $self = shift;
-    return $self->{metspath};
 }
 
 sub aipfile {
@@ -174,17 +193,28 @@ sub mets_walk_structMap {
                        die "Can't find USE= attribute for file ID=$fileid\n";
                    }
                }
+
                # never used...
                next if $use eq 'canonical';
+
+               my $mimetype = $file[0]->getAttribute('MIMETYPE');
+
+               if ($use eq 'derivative') {
+                   if ($mimetype eq 'application/xml') {
+                       $use = 'ocr';
+                   } elsif ($mimetype eq 'application/pdf') {
+                       $use = 'distribution';
+                   }
+               }
 
                my @flocat=$self->xpc->findnodes("mets:FLocat",$file[0]);
                if (scalar(@flocat) != 1) {
                    die "Found ".scalar(@flocat)." FLocat file ID=$fileid\n";
                }
 
+               $attr{$use.'.mimetype'}=$mimetype;
                $attr{$use.'.flocat'}=$self->aipfile('FLocat',$flocat[0]->getAttribute('LOCTYPE'),$flocat[0]->getAttribute('xlink:href'));
 
-               $attr{$use.'.mimetype'}=$file[0]->getAttribute('MIMETYPE');
 
                my $admid=$file[0]->getAttribute('ADMID');
                # If there is JHOVE, add that information as well
@@ -295,6 +325,7 @@ sub metsdata {
 }
 
 
+# For now we only extract a text string from OCR data.
 sub getOCRtxt {
     my ($self,$type,$index) = @_;
 
@@ -302,16 +333,38 @@ sub getOCRtxt {
     return if (!$fileinfo);
 
     my $div=$fileinfo->{'divs'}->[$index];
+    return if (!$div);
 
-    # Can only handle embedded txtmap for the moment...
-    return if (!$div->{'dmd.mdtype'} || $div->{'dmd.mdtype'} ne 'txtmap');
-
-    my $dmdid=$div->{'dmd.id'};
-    my @dmdsec=$self->xpc->findnodes("descendant::mets:dmdSec[\@ID=\"$dmdid\"]",$self->xml);
-    if (scalar(@dmdsec) != 1) {
-        die "Found ".scalar(@dmdsec)." dmdSec for ID=$dmdid\n";    
+    my $ocr;
+    # Embedded txtmap
+    if (exists $div->{'dmd.mdtype'} && $div->{'dmd.mdtype'} eq 'txtmap') {
+        my $dmdid=$div->{'dmd.id'};
+        my @dmdsec=$self->xpc->findnodes("descendant::mets:dmdSec[\@ID=\"$dmdid\"]",$self->xml);
+        if (scalar(@dmdsec) != 1) {
+            die "Found ".scalar(@dmdsec)." dmdSec for ID=$dmdid\n";    
+        }
+        $ocr=$dmdsec[0]->textContent;
+    } elsif (exists $div->{'ocr.flocat'} && $div->{'ocr.mimetype'} eq  'application/xml') {
+        my $ocrxml = $self->metsaccess->get_metadata($div->{'ocr.flocat'});
+        return if (!$ocrxml);
+        my $xml= XML::LibXML->new->parse_string($ocrxml);
+        my $xpc = XML::LibXML::XPathContext->new($xml);
+        $xpc->registerNs('txt', 'http://canadiana.ca/schema/2012/xsd/txtmap');
+        $xpc->registerNs('alto', 'http://www.loc.gov/standards/alto/ns-v3');
+        if ($xpc->exists('//txt:txtmap',$xml) || $xpc->exists('//txtmap',$xml)) {
+            $ocr=$xml->textContent;
+        } elsif ($xpc->exists('//alto',$xml) || $xpc->exists('//alto:alto'),$xml) {
+            $ocr='';
+            foreach my $content ($xpc->findnodes('//*[@CONTENT]',$xml)) {
+                $ocr .= " ".$content->getAttribute('CONTENT');
+            }
+        } else {
+            die "Unknown XML schema for ".$div->{'ocr.flocat'}."\n";
+        }
+    } else {
+        # No OCR data
+        return;
     }
-    my $ocr=$dmdsec[0]->textContent;
 
     # Collapse all whitespace and trim (some formatting newlines/tab in XML)
     $ocr =~ s/\s+/ /g;

@@ -1,12 +1,9 @@
 bin/metsparse
 Changes
 HISTORY.md
-lib/CIHM/METS/
 lib/CIHM/METS/parse.pm
-lib/CIHM/METS/resource
-lib/CIHM/METS/resource/xsl
+lib/CIHM/METS/parse/accessfile.pm
 lib/CIHM/METS/resource/xsl/hammer2co.xsl
-lib/CIHM/METS/resource/xsl/include
 lib/CIHM/METS/resource/xsl/include/iso693.xsl
 lib/CIHM/METS/resource/xsl/include/tdr_issue.xsl
 lib/CIHM/METS/resource/xsl/include/tdr_marc.xsl
