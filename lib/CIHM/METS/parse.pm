@@ -2,7 +2,7 @@ package CIHM::METS::parse;
 
 use 5.006;
 use strict;
-use warnings FATAL => 'all';
+#use warnings FATAL => 'all';
 use XML::LibXML;
 use Switch;
 use File::Basename;
@@ -18,13 +18,11 @@ CIHM::METS::parse - Parse METS records that conform to the Canadiana Application
 
 =head1 VERSION
 
-Version 0.03
-
+Version 0.04
 
 =cut
 
-our $VERSION = '0.03';
-
+our $VERSION = '0.04';
 
 =head1 SYNOPSIS
 
@@ -68,12 +66,15 @@ sub new {
     if (ref($args) ne "HASH") {
         die "Argument to CIHM::METS::parse->new() not a hash\n";
     };
-    $self->{args} = $args;
 
-    $self->{xml}=XML::LibXML->new->parse_string($self->xmlfile);
+    $self->{xml}=XML::LibXML->new->parse_string($args->{xmlfile});
+    # Reducing memory footprint -- large string parameter no longer needed.
+    delete $args->{xmlfile};
+
     $self->{xpc}=XML::LibXML::XPathContext->new,
     $self->{fileinfo}={};
 
+    $self->{args} = $args;
     my ($depositor,$objid)=split(/\./,$self->aip);
     $self->{depositor}=$depositor;
     $self->{objid}=$objid;
@@ -86,10 +87,6 @@ sub new {
 sub args {
     my $self = shift;
     return $self->{args};
-}
-sub xmlfile {
-    my $self = shift;
-    return $self->args->{xmlfile};
 }
 sub metspath {
     my $self = shift;
@@ -144,6 +141,7 @@ sub mets_walk_structMap {
 
        my %fi;
        my @divs;
+       my @txtmap;
 
        my @nodes = $self->xpc->findnodes("descendant::mets:structMap[\@TYPE=\"$type\"]",$self->xml);
        if (scalar(@nodes) != 1) {
@@ -174,6 +172,22 @@ sub mets_walk_structMap {
                    $attr{'dmd.mdtype'}=$md[0]->getAttribute('OTHERMDTYPE');
                }
                # TODO: Handle $type=mdRef , not needed at this point.
+
+               # Reduce memory footprint by extracting text early
+               if ($attr{'dmd.mdtype'} eq 'txtmap') {
+                   my @tm=$md[0]->nonBlankChildNodes();
+                   if (scalar(@tm) != 1) {
+                       die "Found ".scalar(@tm)." child txtmap ID=$dmdid\n";
+                   }
+                   my $ocr=$tm[0]->textContent;
+                   $md[0]->removeChild($tm[0]);
+
+                   # Collapse all whitespace and trim (some formatting newlines/tab in XML)
+                   $ocr =~ s/\s+/ /g;
+                   $ocr =~s/^\s+|\s+$//g;
+
+                   @txtmap[scalar(@divs)]=$ocr;
+               }
            }
            
            foreach my $fptr ($self->xpc->findnodes('mets:fptr',$div)) {
@@ -233,9 +247,6 @@ sub mets_walk_structMap {
                        die "Found non-jhove metadata for file ID=$fileid\n";
                    }
                }
-
-
-
            }
 
            push @divs, \%attr;
@@ -256,7 +267,8 @@ sub mets_walk_structMap {
        # Store for multiple use
        $self->{fileinfo}->{$type}={
            fileindex => \%fi,
-           divs => \@divs
+           divs => \@divs,
+           txtmap => \@txtmap
        }
 }
 
@@ -338,12 +350,7 @@ sub getOCRtxt {
     my $ocr;
     # Embedded txtmap
     if (exists $div->{'dmd.mdtype'} && $div->{'dmd.mdtype'} eq 'txtmap') {
-        my $dmdid=$div->{'dmd.id'};
-        my @dmdsec=$self->xpc->findnodes("descendant::mets:dmdSec[\@ID=\"$dmdid\"]",$self->xml);
-        if (scalar(@dmdsec) != 1) {
-            die "Found ".scalar(@dmdsec)." dmdSec for ID=$dmdid\n";    
-        }
-        $ocr=$dmdsec[0]->textContent;
+        return $fileinfo->{'txtmap'}->[$index];
     } elsif (exists $div->{'ocr.flocat'} && $div->{'ocr.mimetype'} eq  'application/xml') {
         my $ocrxml = $self->metsaccess->get_metadata($div->{'ocr.flocat'});
         return if (!$ocrxml);
