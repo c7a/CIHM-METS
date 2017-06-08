@@ -66,28 +66,7 @@
       </xsl:when>
     </xsl:choose>
     <xsl:apply-templates select="mets:div"/>
-  </xsl:template>
 
-  <xsl:template match="mets:fptr">
-    <xsl:variable name="file" select="key('file', @FILEID)"/>
-    <xsl:choose>
-      <xsl:when test="$file/../@USE='master'">
-        <cmr:canonicalMaster mime="{$file/@MIMETYPE}"><xsl:value-of select="concat($filepath, $file/mets:FLocat[@LOCTYPE='URN']/@xlink:href)"/></cmr:canonicalMaster>
-      </xsl:when>
-      <xsl:when test="$file/../@USE='distribution'">
-        <cmr:canonicalDownload mime="{$file/@MIMETYPE}"><xsl:value-of select="concat($filepath, $file/mets:FLocat[@LOCTYPE='URN']/@xlink:href)"/></cmr:canonicalDownload>
-      </xsl:when> 
-      <xsl:when test="$file/../@USE='canonical'">
-        <xsl:choose>
-          <xsl:when test="$file/mets:FLocat[@LOCTYPE='URL']/@xlink:href">
-            <cmr:canonicalUri><xsl:apply-templates select="$file/mets:FLocat[@LOCTYPE='URL']/@xlink:href"/></cmr:canonicalUri>
-          </xsl:when>
-          <xsl:otherwise>
-            <cmr:canonicalUri><xsl:value-of select="concat('http://tdr.canadiana.ca/', $contributor, '//mets:mets/@OBJID')"/></cmr:canonicalUri>
-          </xsl:otherwise>
-        </xsl:choose>
-      </xsl:when>
-    </xsl:choose>
   </xsl:template>
 
 </xsl:stylesheet>
