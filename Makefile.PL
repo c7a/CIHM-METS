@@ -26,7 +26,8 @@ WriteMakefile(
         'File::Slurp' => 0,
  	'FindBin' => 0,
 	'Switch' => 0,
-	'XML::LibXML' => 0
+	'XML::LibXML' => 0,
+	'CIHM::Normalise' => 0,
     },
     dist  => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },
     clean => { FILES => 'CIHM-METS-parse-*' },
