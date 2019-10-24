@@ -569,7 +569,7 @@ sub extract_idata {
                 if(! defined $dochash->{$field}) {
                     $dochash->{$field}=[];
                 }
-                push $dochash->{$field},$child->textContent;
+                push @{$dochash->{$field}},$child->textContent;
             } else {
                 die "Single value field `$field` already set\n"
                     if (defined $dochash->{$field});
